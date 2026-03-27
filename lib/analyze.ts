@@ -238,7 +238,7 @@ export function analyze(rawRows: Row[], settings: Settings): AnalysisResult {
     pspNameNorm: normalize(r.pspName).toLowerCase(),
     paymentMethodNorm: normalize(r.paymentMethod).toLowerCase(),
     statusNorm: normalize(r.status).toLowerCase(),
-    declineReasonNorm: normalize(r.declineReason),
+    declineReasonNorm: normalize(r.declineReasonNorm),
     amountNum: toNumber(r.amount),
     __ts: parseDate(r.processing_date || r.processingDate, settings.timezoneOffset)
   }));
@@ -273,7 +273,7 @@ export function analyze(rawRows: Row[], settings: Settings): AnalysisResult {
     const attempts = sorted.length;
     const uniquePsps = new Set(sorted.map((r) => normalize(r.pspName)).filter(Boolean));
     const declineRows = sorted.filter((r) => r.statusNorm !== "approved");
-    const declineCategories = new Set(declineRows.map((r) => categorizeDecline(normalize(r.declineReason))));
+    const declineCategories = new Set(declineRows.map((r) => categorizeDecline(normalize(r.declineReasonNorm))));
     const durationMinutes = Math.max(0, Math.round((lastTs - firstTs) / 60000));
     const firstDecline = declineRows[0];
     const finalStatus = finalApproved ? "Approved" : "Declined";
@@ -346,7 +346,7 @@ export function analyze(rawRows: Row[], settings: Settings): AnalysisResult {
     if (attempts >= 3 && finalApproved && declineRows.length >= 2) {
       riskSignals.push("Late success after repeated declines");
     }
-    if (declineRows.some((r) => FRAUD_RE.test(normalize(r.declineReason)))) {
+    if (declineRows.some((r) => FRAUD_RE.test(normalize(r.declineReasonNorm)))) {
       riskSignals.push("Fraud/risk decline present");
     }
     if (declineRows.length >= 3 && declineCategories.has("Authentication / 3DS / CVV")) {
@@ -380,7 +380,7 @@ export function analyze(rawRows: Row[], settings: Settings): AnalysisResult {
           amount: r.amountNum,
           currency: normalize(r.currency),
           status: normalize(r.status),
-          declineReason: normalize(r.declineReason),
+          declineReason: normalize(r.declineReasonNorm),
           attemptsForMerchant: attempts,
           uniquePspsForMerchant: uniquePsps.size,
           finalMerchantStatus: finalStatus
@@ -427,7 +427,7 @@ export function analyze(rawRows: Row[], settings: Settings): AnalysisResult {
 
   const declineReasons = Object.entries(
     declinedRows.reduce((acc: Record<string, number>, r) => {
-      const key = normalize(r.declineReason) || "Unknown";
+      const key = normalize(r.declineReasonNorm) || "Unknown";
       acc[key] = (acc[key] || 0) + 1;
       return acc;
     }, {})
@@ -438,7 +438,7 @@ export function analyze(rawRows: Row[], settings: Settings): AnalysisResult {
 
   const declineCategories = Object.entries(
     declinedRows.reduce((acc: Record<string, number>, r) => {
-      const key = categorizeDecline(normalize(r.declineReason));
+      const key = categorizeDecline(normalize(r.declineReasonNorm));
       acc[key] = (acc[key] || 0) + 1;
       return acc;
     }, {})
