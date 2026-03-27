@@ -1,19 +1,8 @@
+
 "use client";
 
 import Papa from "papaparse";
 import { useMemo, useState } from "react";
-import {
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  CartesianGrid,
-  XAxis,
-  YAxis,
-  Tooltip,
-  Legend,
-  LineChart,
-  Line
-} from "recharts";
 import { AnalysisResult, analyze, Settings } from "@/lib/analyze";
 
 const defaultSettings: Settings = {
@@ -40,29 +29,18 @@ function downloadCsv(rows: Record<string, any>[], filename: string) {
 function DataTable({
   title,
   caption,
-  rows,
-  exportName
+  rows
 }: {
   title: string;
   caption?: string;
   rows: Record<string, any>[];
-  exportName?: string;
 }) {
   const keys = rows[0] ? Object.keys(rows[0]) : [];
 
   return (
     <section className="panel">
-      <div className="section-head">
-        <div>
-          <h2 className="section-title">{title}</h2>
-          {caption ? <p className="caption">{caption}</p> : null}
-        </div>
-        {exportName && rows.length ? (
-          <button className="btn" onClick={() => downloadCsv(rows, exportName)}>
-            Export CSV
-          </button>
-        ) : null}
-      </div>
+      <h2 className="section-title">{title}</h2>
+      {caption ? <p className="caption">{caption}</p> : null}
       {!rows.length ? (
         <div className="empty">No rows found for this section.</div>
       ) : (
@@ -81,8 +59,8 @@ function DataTable({
                   {keys.map((key) => {
                     const value = row[key];
                     const riskClass =
-                      key.toLowerCase().includes("riskband") || key.toLowerCase().includes("finalstatus")
-                        ? value === "High" || value === "Declined"
+                      key.toLowerCase().includes("riskband")
+                        ? value === "High"
                           ? "risk-high"
                           : value === "Medium"
                             ? "risk-medium"
@@ -104,16 +82,6 @@ function DataTable({
   );
 }
 
-function ChartCard({ title, caption, children }: { title: string; caption?: string; children: React.ReactNode }) {
-  return (
-    <section className="panel">
-      <h2 className="section-title">{title}</h2>
-      {caption ? <p className="caption">{caption}</p> : null}
-      <div className="chart-box">{children}</div>
-    </section>
-  );
-}
-
 export default function Page() {
   const [rows, setRows] = useState<Record<string, any>[]>([]);
   const [settings, setSettings] = useState<Settings>(defaultSettings);
@@ -129,23 +97,23 @@ export default function Page() {
     <main className="container">
       <div className="header">
         <div>
-          <h1 className="title">BridgerPay International Card Velocity Tool — v2</h1>
+          <h1 className="title">BridgerPay International Card Velocity Tool</h1>
           <p className="subtitle">
-            Deduplicated by unique merchant ID, retry-aware, chart-based, and built for international card analysis.
-            The tool treats one merchantOrderId as one transaction even if it declines across multiple PSPs and later
-            approves in another PSP.
+            Upload your BridgerPay orchestrator CSV. This tool automatically focuses on international card traffic by
+            excluding Confirmo and PayPal by default, then shows velocity spikes, retry behavior, fraudulent activity
+            patterns, risk scoring, and decline analysis.
           </p>
           <div className="hero-tags">
-            <span className="tag">Dedup by merchantOrderId</span>
-            <span className="tag">Retry funnel</span>
-            <span className="tag">Fraud behavior</span>
-            <span className="tag">Decline analysis</span>
-            <span className="tag">Vercel-ready</span>
+            <span className="tag">International card filter</span>
+            <span className="tag">Retry-aware analysis</span>
+            <span className="tag">Fraud / risk signals</span>
+            <span className="tag">Decline root-cause analysis</span>
+            <span className="tag">GMT+6 ready</span>
           </div>
         </div>
-        <div className="panel status-card">
+        <div className="panel" style={{ minWidth: 260 }}>
           <div className="small muted">Loaded file</div>
-          <div className="status-file">{fileName || "No file uploaded yet"}</div>
+          <div style={{ marginTop: 8, fontWeight: 700 }}>{fileName || "No file uploaded yet"}</div>
           <div className="small muted" style={{ marginTop: 8 }}>{parseMessage}</div>
         </div>
       </div>
@@ -153,8 +121,8 @@ export default function Page() {
       <section className="panel" style={{ marginBottom: 16 }}>
         <h2 className="section-title">Upload + settings</h2>
         <p className="caption">
-          Default logic: include only <strong>credit_card</strong> transactions and exclude <strong>Confirmo</strong> and
-          <strong> PayPal</strong>. Deduplication is based on <strong>merchantOrderId</strong>, with fallback logic if missing.
+          Default logic: include only <strong>credit_card</strong> transactions and exclude <strong>Confirmo</strong> and{" "}
+          <strong>PayPal</strong>.
         </p>
 
         <div className="controls">
@@ -190,10 +158,7 @@ export default function Page() {
               onChange={(e) =>
                 setSettings((prev) => ({
                   ...prev,
-                  excludePsps: e.target.value
-                    .split(",")
-                    .map((v) => v.trim())
-                    .filter(Boolean)
+                  excludePsps: e.target.value.split(",").map((v) => v.trim()).filter(Boolean)
                 }))
               }
             />
@@ -248,7 +213,7 @@ export default function Page() {
 
       {result ? (
         <>
-          <section className="grid grid-6" style={{ marginBottom: 16 }}>
+          <section className="grid grid-4" style={{ marginBottom: 16 }}>
             {result.kpis.map((kpi) => (
               <div className="kpi" key={kpi.label}>
                 <div className="kpi-label">{kpi.label}</div>
@@ -259,158 +224,149 @@ export default function Page() {
           </section>
 
           <section className="grid grid-2" style={{ marginBottom: 16 }}>
-            <ChartCard
-              title="Overview"
-              caption="Compares raw attempts with deduplicated merchant-level outcomes."
-            >
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={result.overviewChart}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="metric" angle={-15} textAnchor="end" height={70} interval={0} />
-                  <YAxis />
-                  <Tooltip />
-                  <Bar dataKey="value" />
-                </BarChart>
-              </ResponsiveContainer>
-            </ChartCard>
-
-            <ChartCard
-              title="Retry bucket distribution"
-              caption="Shows how many unique merchant IDs needed 1 attempt, 2 attempts, 3–4 attempts, or 5+ attempts."
-            >
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={result.retryBuckets}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="bucket" />
-                  <YAxis />
-                  <Tooltip />
-                  <Bar dataKey="merchantIds" />
-                </BarChart>
-              </ResponsiveContainer>
-            </ChartCard>
-          </section>
-
-          <section className="grid grid-2" style={{ marginBottom: 16 }}>
-            <ChartCard
-              title="Decline category analysis"
-              caption="Raw decline attempts grouped into meaningful operational categories."
-            >
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={result.declineCategories} layout="vertical" margin={{ left: 40, right: 20 }}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis type="number" />
-                  <YAxis dataKey="category" type="category" width={180} />
-                  <Tooltip />
-                  <Bar dataKey="txCount" />
-                </BarChart>
-              </ResponsiveContainer>
-            </ChartCard>
-
-            <ChartCard
-              title="Hourly attempt trend"
-              caption="Uses the selected timezone offset for operational monitoring and shift analysis."
-            >
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={result.hourlyTrend}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="hour" hide />
-                  <YAxis />
-                  <Tooltip />
-                  <Legend />
-                  <Line type="monotone" dataKey="attempts" dot={false} />
-                  <Line type="monotone" dataKey="approved" dot={false} />
-                  <Line type="monotone" dataKey="declined" dot={false} />
-                </LineChart>
-              </ResponsiveContainer>
-            </ChartCard>
-          </section>
-
-          <section className="grid grid-2" style={{ marginBottom: 16 }}>
             <DataTable
-              title="PSP outcome analysis"
-              caption="Deduplicated by final outcome per merchant ID. A merchant ID that declined across 4 PSPs and approved in 1 PSP counts once."
+              title="PSP analysis"
+              caption="Transaction mix, volume and approval ratio across international card PSPs."
               rows={result.topPsps.slice(0, 20)}
-              exportName="psp_outcome_analysis.csv"
             />
             <DataTable
-              title="Country outcome analysis"
-              caption="Country-level view using unique merchant IDs instead of raw attempts."
+              title="Country analysis"
+              caption="Highest-volume countries after applying the international card filter."
               rows={result.topCountries}
-              exportName="country_outcome_analysis.csv"
-            />
-          </section>
-
-          <section className="grid grid-2" style={{ marginBottom: 16 }}>
-            <DataTable
-              title="Fraud / risk patterns"
-              caption="Merchant-level patterns that suggest card testing, attack traffic, excessive cross-PSP retries, or severe routing friction."
-              rows={result.fraudPatterns}
-              exportName="fraud_patterns.csv"
-            />
-            <DataTable
-              title="High-risk entities"
-              caption="Email / IP / card-fingerprint clusters ranked by behavior-based risk score."
-              rows={result.highRiskEntities}
-              exportName="high_risk_entities.csv"
             />
           </section>
 
           <section className="grid grid-3" style={{ marginBottom: 16 }}>
             <DataTable
               title="Velocity spikes — 5 minutes"
-              caption="Top entities crossing the 5-minute threshold."
+              caption="Top entities crossing the 5-minute threshold. Entity is email, IP, or card fingerprint fallback."
               rows={result.velocity5m}
             />
             <DataTable
               title="Velocity spikes — 15 minutes"
-              caption="Useful for short fraud bursts and aggressive retry loops."
+              caption="Useful for spotting short fraud bursts and aggressive retry loops."
               rows={result.velocity15m}
             />
             <DataTable
               title="Velocity spikes — 60 minutes"
-              caption="Useful for longer attack sessions and sustained transaction pressure."
+              caption="Useful for detecting longer attack sessions and sustained transaction pressure."
               rows={result.velocity60m}
             />
           </section>
 
           <section className="grid grid-2" style={{ marginBottom: 16 }}>
             <DataTable
-              title="Retry summary"
-              caption="One row per retried merchant ID."
-              rows={result.retrySummary}
-              exportName="retry_summary.csv"
+              title="High-risk entities"
+              caption="Risk score is based on velocity, decline ratio, fraud-related declines, small-amount patterns, and multi-card or multi-IP behavior."
+              rows={result.highRiskEntities}
             />
             <DataTable
-              title="Recovered retries"
-              caption="Merchant IDs that were declined first and then later approved."
-              rows={result.recoveredRetries}
-              exportName="recovered_retries.csv"
+              title="Retry summary"
+              caption="A retry group is mainly identified by merchantOrderId. This section shows repeated attempts and whether an approval was eventually recovered."
+              rows={result.retrySummary.slice(0, 100)}
             />
           </section>
 
           <section className="grid grid-2" style={{ marginBottom: 16 }}>
             <DataTable
-              title="Top raw decline reasons"
-              caption="Raw decline messages from the orchestrator report."
-              rows={result.declineReasons}
-              exportName="decline_reasons.csv"
+              title="Recovered retries"
+              caption="These are retry groups where at least one decline later turned into an approval."
+              rows={result.recoveredRetries}
             />
             <DataTable
-              title="Deduplicated merchant outcomes"
-              caption="Final merchant-level output after collapsing all retries and all PSP hops into a single outcome."
-              rows={result.dedupTransactions.slice(0, 100)}
-              exportName="dedup_merchant_outcomes.csv"
+              title="Decline category analysis"
+              caption="Declines are bucketed into root-cause groups so your team can quickly see whether the issue is fraud, issuer, authentication, or user-side."
+              rows={result.declineCategories}
             />
           </section>
 
-          <DataTable
-            title="Flagged raw transactions"
-            caption="Raw transaction rows belonging to flagged merchant IDs. Useful for investigations and PSP escalation."
-            rows={result.flaggedTransactions}
-            exportName="flagged_transactions.csv"
-          />
+          <section className="panel" style={{ marginBottom: 16 }}>
+            <div className="flex" style={{ justifyContent: "space-between", marginBottom: 14 }}>
+              <div>
+                <h2 className="section-title">Detailed decline reasons</h2>
+                <p className="caption">Top raw decline reasons exactly as they appear in the report.</p>
+              </div>
+            </div>
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>declineReason</th>
+                    <th>txCount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {result.declineReasons.map((row, idx) => (
+                    <tr key={idx}>
+                      <td>{row.declineReason}</td>
+                      <td>{row.txCount}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section className="panel">
+            <div className="flex" style={{ justifyContent: "space-between", marginBottom: 14 }}>
+              <div>
+                <h2 className="section-title">Flagged transactions export</h2>
+                <p className="caption">
+                  Transactions from heavy retry loops are collected here so you can export them for review, chargeback
+                  prep, or PSP escalation.
+                </p>
+              </div>
+              <div className="flex">
+                <button
+                  className="secondary"
+                  onClick={() => downloadCsv(result.flaggedTransactions, "flagged_transactions.csv")}
+                >
+                  Export flagged CSV
+                </button>
+              </div>
+            </div>
+            {!result.flaggedTransactions.length ? (
+              <div className="empty">No flagged transactions found.</div>
+            ) : (
+              <div className="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      {Object.keys(result.flaggedTransactions[0]).map((k) => (
+                        <th key={k}>{k}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {result.flaggedTransactions.slice(0, 200).map((row, idx) => (
+                      <tr key={idx}>
+                        {Object.keys(result.flaggedTransactions[0]).map((k) => (
+                          <td key={k}>{String(row[k] ?? "")}</td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+
+          <div style={{ marginTop: 16 }} className="footer-note">
+            Notes: This tool assumes your BridgerPay CSV contains fields such as <strong>processing_date</strong> or{" "}
+            <strong>processingDate</strong>, <strong>pspName</strong>, <strong>paymentMethod</strong>,{" "}
+            <strong>status</strong>, <strong>declineReason</strong>, <strong>merchantOrderId</strong>,{" "}
+            <strong>email</strong>, <strong>ipAddress</strong>, <strong>bin</strong> and <strong>lastFourDigits</strong>.
+            If your file structure changes later, update the parser logic in <strong>lib/analyze.ts</strong>.
+          </div>
         </>
-      ) : null}
+      ) : (
+        <section className="panel">
+          <div className="empty">
+            Upload your BridgerPay CSV to see international card velocity, retries, fraud patterns, risk scoring, and
+            decline analysis.
+          </div>
+        </section>
+      )}
     </main>
   );
 }
